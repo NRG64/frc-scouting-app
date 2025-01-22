@@ -37,6 +37,11 @@ const index = () => {
     setModalVisible(true); 
   };
 
+  const handleModalButtonPress = (buttonText: string): void => {
+    console.log(`Modal button "${buttonText}" clicked!`);
+    setModalVisible(false); // Close the modal
+  };
+
   return (
 
     <SafeAreaView style={styles.container}>
@@ -65,7 +70,35 @@ const index = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Button Pressed: {activeButton}</Text>
-            <Button title="Close Modal" onPress={() => setModalVisible(false)} />
+            <View style={styles.modalButtonGroup}>
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => handleModalButtonPress("L1")}
+              >
+                <Text style={styles.modalButtonText}>Option 1</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => handleModalButtonPress("L2")}
+              >
+                <Text style={styles.modalButtonText}>Option 2</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => handleModalButtonPress("L3")}
+              >
+                <Text style={styles.modalButtonText}>Option 3</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => handleModalButtonPress("L4")}
+              >
+                <Text style={styles.modalButtonText}>Option 4</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
         </Modal>
@@ -104,6 +137,21 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 10,
+  },
+  modalButton: {
+    backgroundColor: "#2196F3",
+    padding: 10,
+    marginVertical: 5,
+    borderRadius: 5,
+    alignItems: "center",
+  },
+  modalButtonText: {
+    color: "white",
+    fontSize: 16,
+  },
+    modalButtonGroup: {
+      marginTop: 20,
+      width: "100%",
   },
 });
 export default index
