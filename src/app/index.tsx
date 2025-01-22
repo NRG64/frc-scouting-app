@@ -2,14 +2,12 @@
 import { Stack } from "expo-router";
 import { Link } from "expo-router";
 import React, {useState} from "react";
-import { Text, View , TouchableWithoutFeedback, TouchableOpacity, StyleSheet, SafeAreaView, Image, Button, Modal} from "react-native";
+import { Text, View , TouchableWithoutFeedback, TouchableOpacity, StyleSheet, SafeAreaView, Image, Button, Modal, Pressable} from "react-native";
 
 interface TouchAreaProps {
   imageSource: '../assets/gameField'
   onTouch: (x:number, y:number) => void 
 };
-
-
 // Define button positions individually
 const buttonConfigs = [
   { name: "A", top: 300, left: 230 },
@@ -31,25 +29,32 @@ const index = () => {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [activeButton, setActiveButton] = useState<string | null>(null); // track active button 
+  const [coordinates, setCoordinates] = useState<{ x: number; y: number } | null>(null);
 
   const onPress = (buttonName: string): void => {
     setActiveButton(buttonName);
     setModalVisible(true); 
   };
 
+  const handleImagePress = (event: any) => {
+    const { locationX, locationY } = event.nativeEvent;
+    setCoordinates({ x: locationX, y: locationY });
+    console.log(`Clicked at X: ${locationX}, Y: ${locationY}`);
+  };
+
   const handleModalButtonPress = (buttonText: string): void => {
-    console.log(`Modal button "${buttonText}" clicked!`);
     setModalVisible(false); // Close the modal
   };
 
   return (
 
     <SafeAreaView style={styles.container}>
-
+      <Pressable onPressIn = {handleImagePress}>
       <Image
         source={require("../assets/gameField.png")}
         style={{ width: 1210, height: 660 }}
       />
+      </Pressable>
 
       {buttonConfigs.map((button, index) => (
         <View
