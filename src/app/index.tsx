@@ -1,7 +1,7 @@
 
 import { Stack } from "expo-router";
 import { Link } from "expo-router";
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 import { Text, View , TouchableWithoutFeedback, TouchableOpacity, StyleSheet, SafeAreaView, Image, Button, Modal, Pressable} from "react-native";
 
 interface TouchAreaProps {
@@ -35,6 +35,74 @@ const index = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [activeButton, setActiveButton] = useState<string | null>(null); // track active button 
   const [coordinates, setCoordinates] = useState<{ x: number; y: number } | null>(null);
+  const [timer, setTimer] = useState(0); // ime in seconds
+  const [isRunning, setIsRunning] = useState(false); // track state of timer 
+  const [resumeAllowed, setresumeAllowed] = useState(true); // resume
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+  
+    if (isRunning) {
+      interval = setInterval(() => {
+        setTimer((prev) => {
+          // Automatically stop at 150
+          if (prev >= 150) {
+            if (interval) clearInterval(interval);
+            alert("Match Ended");
+            setIsRunning(false);
+            return 150; // Cap timer at 150
+          }
+  
+          // Pause at 15 seconds
+          if (prev === 15 && resumeAllowed) {
+            if (interval) clearInterval(interval);
+            interval = null;
+            alert("Timer Paused");
+            setIsRunning(false);
+            setresumeAllowed(true); // Allow resume
+            return prev;// Stop at 15 seconds
+          }
+  
+          return prev + 1
+        });
+      }, 1000);
+    }
+  
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isRunning, resumeAllowed]);
+  
+  // Start timer
+  const startTimer = () => {
+    if (timer < 150) {
+      setIsRunning(true);
+      setresumeAllowed(false); // Prevent multiple resumes
+    } else {
+      alert("Match Over");
+    }
+  };
+
+  const handleStartOrresume = () => {
+    if (!isRunning) {
+      if (timer === 0) { // Start the timer from 0
+        setIsRunning(true);
+        setresumeAllowed(true); // Ensure it pauses at 15 seconds
+      } else if (resumeAllowed) { // resume the timer from its paused state
+        setIsRunning(true);
+        setresumeAllowed(false); // Prevent another pause at 15 seconds
+      } else {
+        alert("Cannot resume");
+      }
+    }
+  };
+  
+  const resetTimer = () => {
+    setTimer(0); // Reset the timer to 0
+    setIsRunning(false); // Stop the timer
+    setresumeAllowed(true); // Allow resume
+  };
+
 
   const onPress = (buttonName: string): void => {
     setActiveButton(buttonName);
@@ -54,6 +122,25 @@ const index = () => {
   return (
 
     <SafeAreaView style={styles.container}>
+        <View style={styles.timerContainer}>
+          <Text style={styles.timerText}>
+          {Math.floor(timer / 60)
+           .toString()
+           .padStart(2, "0")}:
+          {(timer % 60).toString().padStart(2, "0")}
+          </Text>
+        </View>
+
+        <View style={styles.controls}>
+          <Button
+            title={!isRunning ? (timer === 0 ? "Start Timer" : "resume Timer") : "Running..."}
+            onPress={handleStartOrresume}
+            disabled={isRunning} // Disable while the timer is running
+          />
+          <Button title="Reset Timer" onPress={resetTimer} />
+        </View>
+
+
       <Pressable onPressIn = {handleImagePress}>
       <Image
         source={require("../assets/gameField.png")}
@@ -177,5 +264,27 @@ const styles = StyleSheet.create({
       marginTop: 20,
       width: "100%",
   },
+    timerContainer: {
+      position: "absolute",
+    bottom: 20,
+    left: "50%",
+    transform: [{ translateX: -50 }],
+    backgroundColor: "black",
+    padding: 10,
+    borderRadius: 10,
+    },
+    timerText: {
+      fontSize: 24,
+    color: "white",
+    fontWeight: "bold",
+    },
+    controls:{
+      position: "absolute",
+    bottom: 70,
+    alignSelf: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: 300,
+    }
 });
 export default index
