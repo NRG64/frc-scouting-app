@@ -25,6 +25,11 @@ const buttonConfigs = [
   
 ];
 
+const HPbutton = [
+  {name: "HP1", top: 100, left: 50},
+  {name: "HP2", top: 500, left: 50 }
+];
+
 const index = () => {
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -107,7 +112,21 @@ const index = () => {
           </View>
         </View>
         </Modal>
-
+        
+        {HPbutton.map((button, index) => (
+        <View
+          key={`set1-${index}`}
+          style={[
+            styles.buttonContainer,
+            { top: button.top, left: button.left },
+          ]}
+        >
+          <Button
+            title={button.name}
+            color="#D30000"
+          />
+        </View>
+      ))}
     </SafeAreaView>
   );
 };
