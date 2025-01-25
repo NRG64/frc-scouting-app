@@ -2,7 +2,7 @@
 import { Stack } from "expo-router";
 import { Link } from "expo-router";
 import React, {useEffect, useState} from "react";
-import { Text, View , TouchableWithoutFeedback, TouchableOpacity, StyleSheet, SafeAreaView, Image, Button, Modal, Pressable, FlatList} from "react-native";
+import { Text, View , TouchableWithoutFeedback, TouchableOpacity, StyleSheet, SafeAreaView, Image, Button, Modal, Pressable, FlatList, TextInput, ScrollView} from "react-native";
 
 interface TouchAreaProps {
   imageSource: '../assets/gameField'
@@ -27,13 +27,27 @@ const buttonConfigs = [
 
 const index = () => {
 
-  const [modalVisible, setModalVisible] = useState(false);
+  const [ButtonModalVisible, setButtonModalVisible] = useState(false);
+  const [fieldModalVisible, setFieldModalVisible] = useState(false);
   const [activeButton, setActiveButton] = useState<string | null>(null); // track active button 
   const [coordinates, setCoordinates] = useState<{ x: number; y: number } | null>(null);
   const [timer, setTimer] = useState(0); // ime in seconds
   const [isRunning, setIsRunning] = useState(false); // track state of timer 
   const [resumeAllowed, setresumeAllowed] = useState(true); // resume
   const [presses, setPresses] = useState<{ id: string; timestamp: string; x?: number; y?: number }[]>([]); // store presses
+  const [shotModalVisible, setShotModalVisible] = useState(false);
+  const [selectedAction, setSelectedAction] = useState<string | null>(null);
+
+  const [metadata, setMetadata] = useState({
+    teamNumber: "",
+    matchNumber: "",
+    teamName: "",
+  });const handleMetadataChange = (key: string, value: string) => {
+    setMetadata((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
@@ -102,8 +116,55 @@ const index = () => {
   const handleImagePress = (event: any) => {
     const { locationX, locationY } = event.nativeEvent;
     setCoordinates({ x: locationX, y: locationY });
-    handleButtonPress("image", locationX, locationY);
+
+    const isNearButton = buttonConfigs.some(
+      (button) =>
+        Math.abs(locationX - button.left) < 30 && Math.abs(locationY - button.top) < 30
+    );
+  
+    if (!isNearButton && isRunning) {
+      setCoordinates({ x: locationX, y: locationY });
+      setFieldModalVisible(true);
+    }
   };
+
+  const handleFieldPress = (action: string) => {
+    const minutes = Math.floor(timer / 60).toString().padStart(2, "0");
+    const seconds = (timer % 60).toString().padStart(2, "0");
+    const timestamp = `${minutes}:${seconds}`;
+  
+    if (action === "Shot") {
+      // Handle special case for Shot
+      setSelectedAction("Shot");
+      setFieldModalVisible(false); // Close field modal
+      setShotModalVisible(true);   // Open shot modal
+    } else {
+      // Log the action
+      setPresses((prev) => [
+        ...prev,
+        { id: action, timestamp, x: coordinates?.x, y: coordinates?.y },
+      ]);
+      setFieldModalVisible(false); // Close the modal
+    }
+  };
+
+  const handleShotSelection = (result: string) => {
+    const minutes = Math.floor(timer / 60).toString().padStart(2, "0");
+    const seconds = (timer % 60).toString().padStart(2, "0");
+    const timestamp = `${minutes}:${seconds}`;
+  
+    setPresses((prev) => [
+      ...prev,
+      {
+        id: `${selectedAction} - ${result}`, // Logs "Shot - Hit" or "Shot - Miss"
+        timestamp,
+        x: coordinates?.x,
+        y: coordinates?.y,
+      },
+    ]);
+    setShotModalVisible(false); // Close the shot modal
+  };
+  
 
   const handleButtonPress = (buttonName: string, x?: number, y?: number, source: string = "Field") => {
     const minutes = Math.floor(timer / 60).toString().padStart(2, "0");
@@ -117,7 +178,7 @@ const index = () => {
     const validButtons = buttonConfigs.map((button) => button.name); // ['A', 'B', ..., 'L']
   if (source === "Field" && validButtons.includes(buttonName)) {
     setActiveButton(buttonName);
-    setModalVisible(true);
+    setButtonModalVisible(true);
   }
   };
 
@@ -132,7 +193,7 @@ const index = () => {
   const timestamp = `${minutes}:${seconds}`;
 
 
-    setModalVisible(false); // Close the modal
+    setButtonModalVisible(false); // Close the modal
     setPresses((prev) => [
       ...prev,
       { id: buttonText, timestamp, source: "Modal" }, // Record the timestamp
@@ -142,6 +203,7 @@ const index = () => {
   return (
 
     <SafeAreaView style={styles.container}>
+      <ScrollView>
         <View style={styles.timerContainer}>
           <Text style={styles.timerText}>
           {Math.floor(timer / 60)
@@ -159,6 +221,37 @@ const index = () => {
           />
           <Button title="Reset Timer" onPress={resetTimer} />
         </View>
+
+        <View style={styles.metadataContainer}>
+        <Text style={styles.metadataHeader}>Match Information</Text>
+        <View style={styles.metadataRow}>
+          <Text>Team Number:</Text>
+          <TextInput
+            style={styles.input}
+            value={metadata.teamNumber}
+            onChangeText={(value) => handleMetadataChange("teamNumber", value)}
+            placeholder="Enter Team Number"
+          />
+        </View>
+        <View style={styles.metadataRow}>
+          <Text>Match Number:</Text>
+          <TextInput
+            style={styles.input}
+            value={metadata.matchNumber}
+            onChangeText={(value) => handleMetadataChange("matchNumber", value)}
+            placeholder="Enter Match Number"
+          />
+        </View>
+        <View style={styles.metadataRow}>
+          <Text>Team Name:</Text>
+          <TextInput
+            style={styles.input}
+            value={metadata.teamName}
+            onChangeText={(value) => handleMetadataChange("teamName", value)}
+            placeholder="Enter Team Name"
+          />
+        </View>
+      </View>
 
 
       <Pressable onPressIn = {handleImagePress}>
@@ -184,7 +277,7 @@ const index = () => {
      
         <Modal
         transparent={true}
-        visible={modalVisible}
+        visible={ButtonModalVisible}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -203,6 +296,46 @@ const index = () => {
           </View>
         </View>
         </Modal>
+
+              <Modal transparent={true} visible={fieldModalVisible}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Field Action</Text>
+            <View style={styles.modalButtonGroup}>
+              {["Intake Algae", "Intake Coral", "Shot"].map((action) => (
+                <TouchableOpacity
+                  key={action}
+                  style={styles.modalButton}
+                  onPress={() => handleFieldPress
+                (action)}
+                >
+                  <Text style={styles.modalButtonText}>{action}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+            <Modal transparent={true} visible={shotModalVisible}> //shotmodal
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Shot Result</Text>
+            <View style={styles.modalButtonGroup}>
+              {["Hit", "Miss"].map((result) => (
+                <TouchableOpacity
+                  key={result}
+                  style={styles.modalButton}
+                  onPress={() => handleShotSelection(result)}
+                >
+                  <Text style={styles.modalButtonText}>{result}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
 
         <View style={styles.tableContainer}>
           <Text style={styles.tableHeader}>Button Press History</Text>
@@ -225,7 +358,7 @@ const index = () => {
         </View>
 
         
-        
+        </ScrollView>
     </SafeAreaView>
   );
 };
@@ -322,5 +455,15 @@ const styles = StyleSheet.create({
     tableCell: {
       fontSize: 16,
     },
-});
+    metadataContainer: { padding: 10, backgroundColor: "#f0f0f0" },
+    metadataHeader: { fontSize: 18, fontWeight: "bold", marginBottom: 10 },
+    metadataRow: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
+    input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    marginLeft: 10,
+    padding: 5,
+    width: 200,
+    },
+  });
 export default index
