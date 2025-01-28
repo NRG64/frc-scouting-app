@@ -2,7 +2,8 @@
 import { Stack } from "expo-router";
 import { Link } from "expo-router";
 import React, {useEffect, useState} from "react";
-import { Text, View , TouchableWithoutFeedback, TouchableOpacity, StyleSheet, SafeAreaView, Image, Button, Modal, Pressable, FlatList, TextInput, ScrollView} from "react-native";
+import { Text, View , TouchableOpacity, StyleSheet, SafeAreaView, Image, Button, Modal, Pressable, FlatList, TextInput, ScrollView} from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface TouchAreaProps {
   imageSource: '../assets/gameField'
@@ -29,6 +30,7 @@ const index = () => {
 
   const [ButtonModalVisible, setButtonModalVisible] = useState(false);
   const [fieldModalVisible, setFieldModalVisible] = useState(false);
+  const [viewDataModalVisible, setViewDataModalVisible] = useState(false); // Modal for viewing stored data
   const [activeButton, setActiveButton] = useState<string | null>(null); // track active button 
   const [coordinates, setCoordinates] = useState<{ x: number; y: number } | null>(null);
   const [timer, setTimer] = useState(0); // ime in seconds
@@ -37,6 +39,70 @@ const index = () => {
   const [presses, setPresses] = useState<{ id: string; timestamp: string; x?: number; y?: number }[]>([]); // store presses
   const [shotModalVisible, setShotModalVisible] = useState(false);
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
+  const [storedData, setStoredData] = useState([]); // To hold the stored data from AsyncStorage
+  const [editingIndex, setEditingIndex] = useState<number | null>(null); // To track the index of the row being edited
+  const [editedRow, setEditedRow] = useState(""); // To hold the currently edited row data
+
+
+  const Store = async () => {
+    try {
+      const existingData = await AsyncStorage.getItem('scoutingData');
+      const parsedData = existingData ? JSON.parse(existingData) : [];
+      const newData = [...parsedData, { match: metadata.matchNumber, data: presses }];
+  
+      await AsyncStorage.setItem('scoutingData', JSON.stringify(newData));
+      alert('Data saved successfully!');
+    } catch (error) {
+      console.error('Error saving data:', error);
+    }
+  };
+  
+  const loadTableFromStorage = async () => {
+    try {
+      const data = await AsyncStorage.getItem('scoutingData');
+      if (data) {
+        const parsedData = JSON.parse(data);
+        console.log("Loaded Data:", JSON.stringify(parsedData, null, 2));
+        setStoredData(parsedData);
+        alert('Data loaded successfully!');
+        setViewDataModalVisible(true); 
+        console.log(parsedData); // You can display this in a UI for editing
+      } else {
+        alert('No data found!');
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
+  };
+
+  const saveEditedData = async () => {
+    try {
+      if (editingIndex !== null) {
+        const updatedData = [...storedData];
+        updatedData[editingIndex] = JSON.parse(editedRow); // Update the row with new data
+        setStoredData(updatedData);
+        await AsyncStorage.setItem('scoutingData', JSON.stringify(updatedData));
+        alert('Data updated successfully!');
+        setEditingIndex(null);
+        setEditedRow(""); // Clear editing state
+      }
+    } catch (error) {
+      console.error('Error saving edited data:', error);
+    }
+  };
+
+  const deleteRow = async (index: number) => {
+    try {
+      const updatedData = storedData.filter((_, i) => i !== index);
+      setStoredData(updatedData);
+      await AsyncStorage.setItem('scoutingData', JSON.stringify(updatedData));
+      alert('Row deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting row:', error);
+    }
+  };
+
+  
 
   const [metadata, setMetadata] = useState({
     teamNumber: "",
@@ -107,10 +173,12 @@ const index = () => {
     }
   };
   
-  const resetTimer = () => {
+  const resetTimer = async () => {
+    await Store();
     setTimer(0); // Reset the timer to 0
     setIsRunning(false); // Stop the timer
     setresumeAllowed(true); // Allow resume
+    setPresses([]);
   };
 
   const handleImagePress = (event: any) => {
@@ -203,6 +271,7 @@ const index = () => {
   return (
 
     <SafeAreaView style={styles.container}>
+      
       <ScrollView>
         <View style={styles.timerContainer}>
           <Text style={styles.timerText}>
@@ -213,6 +282,44 @@ const index = () => {
           </Text>
         </View>
 
+        <View style={{ position: 'absolute', bottom: 20, right: 20 }}>
+          <Button title="View Stored Data" onPress={loadTableFromStorage} />
+        </View>
+
+        <Modal visible={viewDataModalVisible} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Stored Data</Text>
+              {storedData.length > 0 ? (
+                <FlatList
+                  data={storedData}
+                  keyExtractor={(item, index) => index.toString()}
+                  renderItem={({ item }) => (
+                    <View style={styles.dataRow}>
+                      <Text style={styles.dataTitle}>Match {item.matchNumber}</Text>
+                      <Text>Team Name: {item.teamName}</Text>
+                      <Text>Team Number: {item.teamNumber}</Text>
+                      <Text>Time Saved: {new Date(item.timestamp).toLocaleString()}</Text>
+                      
+                    
+                      <FlatList
+                        data={item.data}
+                        keyExtractor={(press, idx) => idx.toString()}
+                        renderItem={({ item: press }) => (
+                          <Text>- {press.id} at {press.timestamp} (X: {press.x}, Y: {press.y})</Text>
+                        )}
+                      />
+                    </View>
+                  )}
+                />
+              ) : (
+                <Text>No Data Available</Text>
+              )}
+
+              <Button title="Close" onPress={() => setViewDataModalVisible(false)} />
+            </View>
+          </View>
+        </Modal>
         <View style={styles.controls}>
           <Button
             title={!isRunning ? (timer === 0 ? "Start Timer" : "resume Timer") : "Running..."}
@@ -432,7 +539,7 @@ const styles = StyleSheet.create({
     width: 300,
     },
     tableContainer: {
-      width: 250, 
+      width: 500, 
       marginTop: 20,
       padding: 10,
       backgroundColor: "#f0f0f0",
@@ -465,5 +572,37 @@ const styles = StyleSheet.create({
     padding: 5,
     width: 200,
     },
+    dataRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginVertical: 5,
+    },
+    dataText: {
+      flex: 1,
+      fontSize: 16,
+    },
+    editButton: {
+      backgroundColor: '#2196F3',
+      padding: 5,
+      borderRadius: 5,
+    },
+    editButtonText: {
+      color: 'white',
+    },
+    deleteButton: {
+      backgroundColor: 'red',
+      padding: 5,
+      borderRadius: 5,
+    },
+    deleteButtonText: {
+      color: 'white',
+    },
+    dataTitle: {
+      fontSize: 18,
+      fontWeight: "bold",
+      marginBottom: 5,
+    },
+  
   });
 export default index
