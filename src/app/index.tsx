@@ -9,24 +9,27 @@ interface TouchAreaProps {
   imageSource: '../assets/gameField'
   onTouch: (x:number, y:number) => void 
 };
-// Define button positions individually
-const buttonConfigs = [
-  { name: "A", top: 230, left: 180 },
-  { name: "B", top: 260, left: 180 },
-  { name: "C", top: 295, left: 195 },
-  { name: "D", top: 310, left: 220 },
-  { name: "E", top: 310, left: 275 },
-  { name: "F", top: 300, left: 295 },
-  { name: "G", top: 315, left: 260 },
-  { name: "H", top: 315, left: 230 },
-  { name: "I", top: 250, left: 390 },
-  { name: "J", top: 230, left: 355 },
-  { name: "K", top: 230, left: 285 },
-  { name: "L", top: 250, left: 250 },
+const baseX = 168
+const baseY = 380
 
-  {name: "HP 1", top: 230, left: 65},
-  {name: "HP 2", top: 430, left: 65},
-  {name: "processor", top: 640 , left: 345 },
+
+const buttonConfigs = [
+  { name: "A", top: baseY, left: baseX },
+  { name: "B", top: baseY + 30, left: baseX },
+  { name: "C", top: baseY + 65, left: baseX + 13 },
+  { name: "D", top: baseY + 85, left: baseX + 40 },
+  { name: "E", top: baseY + 85, left: baseX + 93 },
+  { name: "F", top: baseY + 65, left: baseX + 120 },
+  { name: "G", top: baseY + 30, left: baseX + 133 },
+  { name: "H", top: baseY, left: baseX + 133 },
+  { name: "I", top: baseY - 35, left: baseX + 120 },
+  { name: "J", top: baseY - 55, left: baseX + 93 },
+  { name: "K", top: baseY - 55, left: baseX + 40 },
+  { name: "L", top: baseY - 35, left: baseX + 13 },
+
+  {name: "HP 1", top: 210, left: 35},
+  {name: "HP 2", top: 580, left: 35},
+  {name: "processor", top: 630 , left: 303 },
   {name: "Robot disabled", top: 200, left: 1050},
   {name: "Robot enabled", top: 200, left: 900}
 ];
@@ -266,19 +269,15 @@ const index = () => {
 
   const handleModalButtonPress = (buttonText: string): void => {
 
-    const minutes = Math.floor(timer / 60)
-    .toString()
-    .padStart(2, "0");
-  const seconds = (timer % 60).toString().padStart(2, "0");
-  const timestamp = `${minutes}:${seconds}`;
+    const timestamp = formatTimestamp(timer);  // Convert ms to mm:ss:ms format
 
+  setButtonModalVisible(false); // Close the modal
+  setPresses((prev) => [
+    ...prev,
+    { id: buttonText, timestamp, source: "Modal" }, // Store with correct format
+  ]);
 
-    setButtonModalVisible(false); // Close the modal
-    setPresses((prev) => [
-      ...prev,
-      { id: buttonText, timestamp, source: "Modal" }, // Record the timestamp
-    ]);
-
+  
     
 
   };
