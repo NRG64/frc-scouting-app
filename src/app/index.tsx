@@ -23,7 +23,12 @@ const buttonConfigs = [
   { name: "J", top: 230, left: 355 },
   { name: "K", top: 230, left: 285 },
   { name: "L", top: 250, left: 250 },
-  
+
+  {name: "HP 1", top: 230, left: 65},
+  {name: "HP 2", top: 430, left: 65},
+  {name: "processor", top: 640 , left: 345 },
+  {name: "Robot disabled", top: 200, left: 1050},
+  {name: "Robot enabled", top: 200, left: 900}
 ];
 
 const index = () => {
@@ -121,33 +126,32 @@ const index = () => {
     if (isRunning) {
       interval = setInterval(() => {
         setTimer((prev) => {
-          // Automatically stop at 150
-          if (prev >= 150) {
+          if (prev >= 150000) { 
             if (interval) clearInterval(interval);
             alert("Match Ended");
             setIsRunning(false);
-            return 150; // Cap timer at 150
+            return 150000; 
           }
-  
-          // Pause at 15 seconds
-          if (prev === 15 && resumeAllowed) {
+
+          if (prev >= 15000 && resumeAllowed) {
             if (interval) clearInterval(interval);
             interval = null;
             alert("Timer Paused");
             setIsRunning(false);
-            setresumeAllowed(true); // Allow resume
-            return prev;// Stop at 15 seconds
+            setresumeAllowed(true);
+            return prev;
           }
   
-          return prev + 1
+          return prev + 10; // Increase by 10ms instead of 1 second
         });
-      }, 1000);
+      }, 10); // Update every 10ms instead of every second
     }
   
     return () => {
       if (interval) clearInterval(interval);
     };
   }, [isRunning, resumeAllowed]);
+  
   
   // Start timer
   const startTimer = () => {
@@ -195,11 +199,18 @@ const index = () => {
       setFieldModalVisible(true);
     }
   };
+  const formatTimestamp = (time: number) => {
+    const minutes = Math.floor(time / 60000).toString().padStart(2, "0");
+    const seconds = Math.floor((time % 60000) / 1000).toString().padStart(2, "0");
+    const milliseconds = ((time % 1000) / 10).toFixed(0).padStart(2, "0");
+  
+    return `${minutes}:${seconds}:${milliseconds}`;
+  };
+  
+  
 
   const handleFieldPress = (action: string) => {
-    const minutes = Math.floor(timer / 60).toString().padStart(2, "0");
-    const seconds = (timer % 60).toString().padStart(2, "0");
-    const timestamp = `${minutes}:${seconds}`;
+    const timestamp = formatTimestamp(timer); 
   
     if (action === "Shot") {
       // Handle special case for Shot
@@ -207,7 +218,7 @@ const index = () => {
       setFieldModalVisible(false); // Close field modal
       setShotModalVisible(true);   // Open shot modal
     } else {
-      // Log the action
+
       setPresses((prev) => [
         ...prev,
         { id: action, timestamp, x: coordinates?.x, y: coordinates?.y },
@@ -217,38 +228,39 @@ const index = () => {
   };
 
   const handleShotSelection = (result: string) => {
-    const minutes = Math.floor(timer / 60).toString().padStart(2, "0");
-    const seconds = (timer % 60).toString().padStart(2, "0");
-    const timestamp = `${minutes}:${seconds}`;
-  
-    setPresses((prev) => [
-      ...prev,
-      {
-        id: `${selectedAction} - ${result}`, // Logs "Shot - Hit" or "Shot - Miss"
-        timestamp,
-        x: coordinates?.x,
-        y: coordinates?.y,
-      },
-    ]);
+    const timestamp = formatTimestamp(timer); 
+
+  setPresses((prev) => [
+    ...prev,
+    {
+      id: `${selectedAction} - ${result}`, 
+      timestamp,
+      x: coordinates?.x,
+      y: coordinates?.y,
+    },
+  ]);
     setShotModalVisible(false); // Close the shot modal
   };
   
-
   const handleButtonPress = (buttonName: string, x?: number, y?: number, source: string = "Field") => {
-    const minutes = Math.floor(timer / 60).toString().padStart(2, "0");
-    const seconds = (timer % 60).toString().padStart(2, "0");
-    const timestamp = `${minutes}:${seconds}`;
+    const timestamp = formatTimestamp(timer); 
 
-    setPresses((prev) => [
-      ...prev,
-      { id: buttonName, timestamp, x, y },
-    ]);
+  setPresses((prev) => [
+    ...prev,
+    { id: buttonName, timestamp, x, y },
+  ]);
+
+    const noModalButtons = ["HP 1", "HP 2", "processor", "Robot enabled", "Robot disabled", "R"];
+  
+
     const validButtons = buttonConfigs.map((button) => button.name); // ['A', 'B', ..., 'L']
-  if (source === "Field" && validButtons.includes(buttonName)) {
-    setActiveButton(buttonName);
-    setButtonModalVisible(true);
-  }
+
+    if (source === "Field" && validButtons.includes(buttonName) && !noModalButtons.includes(buttonName)) {
+      setActiveButton(buttonName);
+      setButtonModalVisible(true);
+    }
   };
+  
 
     
 
@@ -266,6 +278,9 @@ const index = () => {
       ...prev,
       { id: buttonText, timestamp, source: "Modal" }, // Record the timestamp
     ]);
+
+    
+
   };
 
   return (
@@ -274,13 +289,13 @@ const index = () => {
       
       <ScrollView>
         <View style={styles.timerContainer}>
-          <Text style={styles.timerText}>
-          {Math.floor(timer / 60)
-           .toString()
-           .padStart(2, "0")}:
-          {(timer % 60).toString().padStart(2, "0")}
-          </Text>
-        </View>
+        <Text style={styles.timerText}>
+          {Math.floor(timer / 60000).toString().padStart(2, "0")}:
+          {Math.floor((timer % 60000) / 1000).toString().padStart(2, "0")}:
+          {((timer % 1000) / 10).toFixed(0).padStart(2, "0")}
+        </Text>
+      </View>
+
 
         <View style={{ position: 'absolute', bottom: 20, right: 20 }}>
           <Button title="View Stored Data" onPress={loadTableFromStorage} />
