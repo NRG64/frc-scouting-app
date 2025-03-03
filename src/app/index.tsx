@@ -1,6 +1,3 @@
-
-import { Stack } from "expo-router";
-import { Link } from "expo-router";
 import React, {useEffect, useState} from "react";
 import { Text, View , TouchableOpacity, StyleSheet, SafeAreaView, Image, Button, Modal, Pressable, FlatList, TextInput, ScrollView} from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -10,7 +7,7 @@ interface TouchAreaProps {
   onTouch: (x:number, y:number) => void 
 };
 const baseX = 168
-const baseY = 380
+const baseY = 215
 
 
 const buttonConfigs = [
@@ -27,12 +24,22 @@ const buttonConfigs = [
   { name: "K", top: baseY - 55, left: baseX + 40 },
   { name: "L", top: baseY - 35, left: baseX + 13 },
 
-  {name: "HP 1", top: 210, left: 35},
-  {name: "HP 2", top: 580, left: 35},
-  {name: "processor", top: 630 , left: 303 },
+  {name: "HP 1", top: baseY - 170, left: 20},
+  {name: "HP 2", top: baseY + 200, left: 20},
+  {name: "processor", top: 455 , left: 303 },
   {name: "Robot disabled", top: 200, left: 1050},
-  {name: "Robot enabled", top: 200, left: 900}
+  {name: "Robot enabled", top: 200, left: 900},
+  {name: "Defense played", top: 240, left: 900},
+
+  { name: "", top: baseY + 20, left: baseX + 38, type: "algae" },
+  { name: "", top: baseY + 20, left: baseX + 100, type: "algae" },
+  { name: "", top: baseY + 48, left: baseX + 52, type: "algae" },
+  { name: "", top: baseY - 7, left: baseX + 52, type: "algae" },
+  { name: "", top: baseY - 7, left: baseX + 85, type: "algae" },
+  { name: "", top: baseY + 48, left: baseX + 85, type: "algae" },
 ];
+
+
 
 const index = () => {
 
@@ -50,6 +57,9 @@ const index = () => {
   const [storedData, setStoredData] = useState([]); // To hold the stored data from AsyncStorage
   const [editingIndex, setEditingIndex] = useState<number | null>(null); // To track the index of the row being edited
   const [editedRow, setEditedRow] = useState(""); // To hold the currently edited row data
+  const [algaeModalVisible, setAlgaeModalVisible] = useState(false);
+  const [selectedAlgae, setSelectedAlgae] = useState<{ x: number; y: number } | null>(null);
+
 
 
   const Store = async () => {
@@ -215,9 +225,9 @@ const index = () => {
   const handleFieldPress = (action: string) => {
     const timestamp = formatTimestamp(timer); 
   
-    if (action === "Shot") {
+    if (action === "Net") {
       // Handle special case for Shot
-      setSelectedAction("Shot");
+      setSelectedAction("Net");
       setFieldModalVisible(false); // Close field modal
       setShotModalVisible(true);   // Open shot modal
     } else {
@@ -253,7 +263,7 @@ const index = () => {
     { id: buttonName, timestamp, x, y },
   ]);
 
-    const noModalButtons = ["HP 1", "HP 2", "processor", "Robot enabled", "Robot disabled", "R"];
+    const noModalButtons = ["HP 1", "HP 2", "processor", "Robot enabled", "Robot disabled", "R", "Defense played"];
   
 
     const validButtons = buttonConfigs.map((button) => button.name); // ['A', 'B', ..., 'L']
@@ -263,24 +273,29 @@ const index = () => {
       setButtonModalVisible(true);
     }
   };
+
+  
   
 
     
 
   const handleModalButtonPress = (buttonText: string): void => {
-
-    const timestamp = formatTimestamp(timer);  // Convert ms to mm:ss:ms format
-
-  setButtonModalVisible(false); // Close the modal
-  setPresses((prev) => [
-    ...prev,
-    { id: buttonText, timestamp, source: "Modal" }, // Store with correct format
-  ]);
-
+    setButtonModalVisible(false); // Close the modal
   
-    
-
+    setPresses((prev) => {
+      if (prev.length === 0) return prev; // Prevents errors if no prior entry exists
+  
+      const lastPress = prev[prev.length - 1]; // Get the most recent press
+      if (!lastPress.id.includes(" - ")) {
+        // Append L1, L2, etc. only if it hasn't been added already
+        const updatedPress = { ...lastPress, id: `${lastPress.id} - ${buttonText}` };
+        return [...prev.slice(0, -1), updatedPress]; // Replace the last press with the updated version
+      }
+  
+      return prev; // If already updated, do nothing
+    });
   };
+  
 
   return (
 
@@ -375,25 +390,37 @@ const index = () => {
       </View>
 
 
-      <Pressable onPressIn = {handleImagePress}>
-      <Image
-        source={require("../assets/gameField.png")}
-        style={{ width: 900, height: 490.5 }}
-      />
-      </Pressable>
+      <Pressable onPressIn={handleImagePress}>
+  <Image
+    source={require("../assets/gameField.png")}
+    style={{ width: 900, height: 490.5 }}
+  />
 
-      {buttonConfigs.map((button, index) => (
-        <View
-          key={index}
-          style={[styles.buttonContainer, { top: button.top, left: button.left }]}
-        >
-          <Button
-            onPress={() => handleButtonPress(button.name)}
-            title={button.name}
-            color="#D30000"
-          />
-        </View>
-      ))}
+  {/* Render Standard Red Buttons */}
+  {buttonConfigs
+    .filter((button) => !button.type) // Ignore algae buttons
+    .map((button, index) => (
+      <View key={`button-${index}`} style={[styles.buttonContainer, { top: button.top, left: button.left }]}>
+        <Button onPress={() => handleButtonPress(button.name)} title={button.name} color="#D30000" />
+      </View>
+    ))}
+
+  {/* Render Aqua Algae Buttons */}
+  {buttonConfigs
+    .filter((button) => button.type === "algae") // Only algae buttons
+    .map((button, index) => (
+      <TouchableOpacity
+        key={`algae-${index}`}
+        style={[styles.aquaCircle, { top: button.top, left: button.left }]}
+        onPress={(event) => {
+          const { locationX, locationY } = event.nativeEvent;
+          setSelectedAlgae({ x: locationX, y: locationY });
+          setAlgaeModalVisible(true);
+        }}
+      />
+    ))}
+</Pressable>
+
 
      
         <Modal
@@ -404,7 +431,7 @@ const index = () => {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Button Pressed: {activeButton}</Text>
             <View style={styles.modalButtonGroup}>
-            {["L1", "L2", "L3", "L4"].map((modalButtonName) => (
+            {["L1", "L2", "L3", "L4", "Miss"].map((modalButtonName) => (
               <TouchableOpacity
                 key={modalButtonName}
                 style={styles.modalButton}
@@ -423,7 +450,7 @@ const index = () => {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Field Action</Text>
             <View style={styles.modalButtonGroup}>
-              {["Intake Algae", "Intake Coral", "Shot"].map((action) => (
+              {["Intake Algae", "Intake Coral", "Net"].map((action) => (
                 <TouchableOpacity
                   key={action}
                   style={styles.modalButton}
@@ -456,6 +483,36 @@ const index = () => {
           </View>
         </View>
       </Modal>
+
+      <Modal transparent={true} visible={algaeModalVisible}>
+  <View style={styles.modalOverlay}>
+    <View style={styles.modalContent}>
+      <Text style={styles.modalTitle}>Algae Action</Text>
+      <Text>Coordinates: X: {selectedAlgae?.x?.toFixed(1)}, Y: {selectedAlgae?.y?.toFixed(1)}</Text>
+
+      <View style={styles.modalButtonGroup}>
+        {["Remove Algae", "Intake Algae"].map((action) => (
+          <TouchableOpacity
+            key={action}
+            style={styles.modalButton}
+            onPress={() => {
+              setPresses((prev) => [
+                ...prev,
+                { id: action, timestamp: formatTimestamp(timer), x: selectedAlgae?.x, y: selectedAlgae?.y },
+              ]);
+              setAlgaeModalVisible(false); // Close modal after selection
+            }}
+          >
+            <Text style={styles.modalButtonText}>{action}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Button title="Close" onPress={() => setAlgaeModalVisible(false)} />
+    </View>
+  </View>
+</Modal>
+
 
 
         <View style={styles.tableContainer}>
@@ -617,6 +674,42 @@ const styles = StyleSheet.create({
       fontWeight: "bold",
       marginBottom: 5,
     },
-  
+    hexButton: {
+      width: 45,
+      height: 45,
+      backgroundColor: "white", 
+      borderWidth: 3, 
+      borderColor: "#D300F7", 
+      justifyContent: "center",
+      alignItems: "center",
+      borderRadius: 5, 
+    },
+    defaultButton: {
+      width: 45, 
+      height: 45,
+      backgroundColor: "#D30000", 
+      justifyContent: "center",
+      alignItems: "center",
+      borderRadius: 5,
+    },
+    buttonText: {
+      color: "black",
+      fontSize: 16,
+      fontWeight: "bold",
+    },
+    aquaCircle: {
+      position: "absolute",
+      width: 20,
+      height: 20,
+      backgroundColor: "blue",
+      borderRadius: 15,
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 2,
+      borderColor: "#007FFF",
+    },
+    
   });
+  
+
 export default index
